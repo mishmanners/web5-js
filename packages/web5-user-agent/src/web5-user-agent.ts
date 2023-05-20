@@ -46,7 +46,13 @@ import {
 
 import { ProfileApi } from './profile-api.js';
 import { DwnRpcClient } from './dwn-rpc-client.js';
-import { blobToIsomorphicNodeReadable, webReadableToIsomorphicNodeReadable } from './utils.js';
+import {
+  encryptStream,
+  teeNodeReadable,
+  generateDwnEncryptionInput,
+  blobToIsomorphicNodeReadable,
+  webReadableToIsomorphicNodeReadable,
+} from './utils.js';
 
 // TODO: allow user to provide optional array of DwnRpc implementations once DwnRpc has been moved out of this package
 export type Web5UserAgentOptions = {
@@ -109,7 +115,7 @@ export class Web5UserAgent implements Web5Agent {
    * @returns
    */
   async processDwnRequest(request: ProcessDwnRequest): Promise<DwnResponse> {
-    const { message, dataStream }= await this.#constructDwnMessage(request);
+    const { message, dataStream } = await this.#constructDwnMessage(request);
 
     let reply: MessageReply;
     if (request.store !== false) {
@@ -242,29 +248,72 @@ export class Web5UserAgent implements Web5Agent {
 
   async #constructDwnMessage(request: ProcessDwnRequest) {
     const dwnSignatureInput = await this.#getAuthorSignatureInput(request.author);
-    let readableStream: Readable;
+    let streamForProcessMessage: Readable;
 
     // TODO: Consider refactoring to move data transformations imposed by fetch() limitations to the HTTP transport-related methods.
     if (request.messageType === 'RecordsWrite') {
       const messageOptions = request.messageOptions as RecordsWriteOptions;
 
-      if (request.dataStream && !messageOptions.data) {
-        const { dataStream } = request;
-        let isomorphicNodeReadable: Readable;
-
-        if (dataStream instanceof Blob) {
-          isomorphicNodeReadable = blobToIsomorphicNodeReadable(dataStream);
-
-          readableStream = blobToIsomorphicNodeReadable(dataStream);
-        } else if (dataStream instanceof ReadableStream) {
-          const [ forCid, forProcessMessage ] = dataStream.tee();
-
-          isomorphicNodeReadable = webReadableToIsomorphicNodeReadable(forCid);
-          readableStream = webReadableToIsomorphicNodeReadable(forProcessMessage);
+      if (request.encrypt) {
+        const encryptionSubject = request.encrypt === true ? request.author : request.encrypt?.for;
+        if (!encryptionSubject) {
+          throw new Error('record encryption enabled but DID to encrypt for not provided.');
         }
 
-        messageOptions.dataCid = await Cid.computeDagPbCidFromStream(isomorphicNodeReadable);
-        messageOptions.dataSize ??= isomorphicNodeReadable['bytesRead'];
+        const { didDocument } = await this.didResolver.resolve(encryptionSubject);
+
+        // Retrieve `#dwn` service entry.
+        const [ dwnService ] = didUtils.getServices(didDocument, { id: '#dwn' });
+        if (dwnService === undefined || typeof dwnService?.serviceEndpoint !== 'object' ) {
+          throw new Error(`${encryptionSubject} has no '#dwn' service endpoint defined in DID document`);
+        }
+
+        // Retrieve first record encryption key from the #dwn serviceEndpoint.
+        if (!dwnService.serviceEndpoint.recordEncryptionKeys) {
+          throw new Error(`${encryptionSubject} has no 'recordEncryptionKeys' defined in '#dwn' service endpoint of DID document`);
+        }
+        const [ encryptionPublicKeyId ] = dwnService.serviceEndpoint.recordEncryptionKeys;
+
+        const [ verificationMethod ] = didUtils.findVerificationMethods(didDocument, { id: encryptionPublicKeyId }) || [];
+        if (!verificationMethod) {
+          throw new Error(`${encryptionSubject} has no '${encryptionPublicKeyId}' verification method defined in DID document`);
+        }
+
+        const encryptionInputOptions = {
+          schema   : messageOptions.schema,
+          protocol : messageOptions.protocol
+        };
+
+        const encryptionSubjectPublicKeyJwk = verificationMethod.publicKeyJwk;
+        messageOptions.encryptionInput = generateDwnEncryptionInput(encryptionSubjectPublicKeyJwk, encryptionInputOptions);
+      }
+
+      if (request.dataStream && !messageOptions.data) {
+        let { dataStream } = request;
+        let nodeReadableStream: Readable;
+        let streamForCidComputation: Readable;
+
+        if (dataStream instanceof Blob) {
+          nodeReadableStream = blobToIsomorphicNodeReadable(dataStream);
+        } else if (dataStream instanceof ReadableStream) {
+          nodeReadableStream = webReadableToIsomorphicNodeReadable(dataStream);
+        }
+
+        // If encryption was specified, encrypt the data stream before proceeding.
+        if (messageOptions.encryptionInput) {
+          nodeReadableStream = await encryptStream(messageOptions.encryptionInput, nodeReadableStream);
+        }
+
+        ([ streamForCidComputation, streamForProcessMessage ] = teeNodeReadable(nodeReadableStream));
+
+        // Count the stream bytes while the CID is being computed.
+        let bytesRead = 0;
+        streamForCidComputation.on('data', (chunk) => {
+          bytesRead += chunk.length;
+        });
+
+        messageOptions.dataCid = await Cid.computeDagPbCidFromStream(streamForCidComputation);
+        messageOptions.dataSize ??= bytesRead;
       }
     }
 
@@ -277,7 +326,7 @@ export class Web5UserAgent implements Web5Agent {
     const messageCreator = dwnMessageCreators[request.messageType];
     const dwnMessage = await messageCreator.create(messageCreateInput as any);
 
-    return { message: dwnMessage.toJSON(), dataStream: readableStream };
+    return { message: dwnMessage.toJSON(), dataStream: streamForProcessMessage };
   }
 
   /**

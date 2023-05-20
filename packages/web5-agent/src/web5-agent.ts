@@ -12,6 +12,7 @@ import {
 } from '@tbd54566975/dwn-sdk-js';
 
 import type { JsonRpcResponse } from './json-rpc.js';
+
 export interface Web5Agent {
   processDwnRequest(request: ProcessDwnRequest): Promise<DwnResponse>
   sendDwnRequest(request: SendDwnRequest): Promise<DwnResponse>;
@@ -35,11 +36,16 @@ export type DwnRequest = {
   messageType: string;
 }
 
+export type RecordEncryptionOptions = {
+  for?: string;
+}
+
 /**
  * TODO: add JSDoc
  */
 export type ProcessDwnRequest = DwnRequest & {
   dataStream?: Blob | ReadableStream | Readable;
+  encrypt?: boolean | RecordEncryptionOptions;
   messageOptions: unknown;
   store?: boolean;
 };

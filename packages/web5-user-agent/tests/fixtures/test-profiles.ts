@@ -4,7 +4,7 @@ import type { TestProfileOptions } from '../common/utils/test-user-agent.js';
 import { generateKeyPair } from '@decentralized-identity/ion-tools';
 
 export const dwnNodes = ['https://dwn.tbddev.org/dwn0'];
-// const dwnNodes = ['http://localhost:3000'];
+// export const dwnNodes = ['http://localhost:3000'];
 
 export const keyIds = {
   did: {

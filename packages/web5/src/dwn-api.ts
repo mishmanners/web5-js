@@ -1,4 +1,4 @@
-import type { Web5Agent } from '@tbd54566975/web5-agent';
+import type { RecordEncryptionOptions, Web5Agent } from '@tbd54566975/web5-agent';
 import type {
   MessageReply,
   ProtocolsConfigureDescriptor,
@@ -86,6 +86,7 @@ export type RecordsReadResponse = {
 
 export type RecordsWriteRequest = {
   data: unknown;
+  encrypt?: boolean | RecordEncryptionOptions;
   message?: Omit<Partial<RecordsWriteOptions>, 'authorizationSignatureInput'>;
   store?: boolean;
 }
@@ -335,6 +336,7 @@ export class DwnApi {
         const agentResponse = await this.web5Agent.processDwnRequest({
           author      : this.connectedDid,
           dataStream  : dataBlob,
+          encrypt     : request.encrypt,
           messageOptions,
           messageType : DwnInterfaceName.Records + DwnMethodName.Write,
           store       : request.store,
