@@ -285,7 +285,7 @@ export class Web5UserAgent implements Web5Agent {
         };
 
         const encryptionSubjectPublicKeyJwk = verificationMethod.publicKeyJwk;
-        messageOptions.encryptionInput = generateDwnEncryptionInput(encryptionSubjectPublicKeyJwk, encryptionInputOptions);
+        messageOptions.encryptionInput = generateDwnEncryptionInput(encryptionSubjectPublicKeyJwk, encryptionPublicKeyId, encryptionInputOptions);
       }
 
       if (request.dataStream && !messageOptions.data) {

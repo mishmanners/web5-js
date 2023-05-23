@@ -15,7 +15,7 @@ export type EncryptInputOptions = {
   schema?: string;
 }
 
-export function generateDwnEncryptionInput(publickKeyJwk: PublicKeyJwk, encryptionInputOptions: EncryptInputOptions): EncryptionInput {
+export function generateDwnEncryptionInput(publickKeyJwk: PublicKeyJwk, publicKeyId: string, encryptionInputOptions: EncryptInputOptions): EncryptionInput {
   // Generate random symmetric encryption key.
   const symmetricKey = cryptoUtils.randomBytes(32);
 
@@ -31,14 +31,16 @@ export function generateDwnEncryptionInput(publickKeyJwk: PublicKeyJwk, encrypti
   // Always add the DataFormats derivation scheme since `dataFormats` is a required record property.
   encryptionInput.keyEncryptionInputs.push({
     derivationScheme : KeyDerivationScheme.DataFormats,
-    publicKey        : publickKeyJwk
+    publicKey        : publickKeyJwk,
+    publicKeyId      : publicKeyId
   });
 
   // Add Protocols derivation scheme only if `protocols` is defined.
   if (encryptionInputOptions.protocol) {
     encryptionInput.keyEncryptionInputs.push({
       derivationScheme : KeyDerivationScheme.Protocols,
-      publicKey        : publickKeyJwk
+      publicKey        : publickKeyJwk,
+      publicKeyId      : publicKeyId
     });
   }
 
@@ -46,7 +48,8 @@ export function generateDwnEncryptionInput(publickKeyJwk: PublicKeyJwk, encrypti
   if (encryptionInputOptions.schema) {
     encryptionInput.keyEncryptionInputs.push({
       derivationScheme : KeyDerivationScheme.Schemas,
-      publicKey        : publickKeyJwk
+      publicKey        : publickKeyJwk,
+      publicKeyId      : publicKeyId
     });
   }
 
