@@ -7,6 +7,9 @@ import { TestAgent, TestProfileOptions } from './test-utils/test-user-agent.js';
 
 // import jwt from 'jsonwebtoken';
 
+// set environment variable SSI_BASE_URL=http://localhost:8080 for local testing
+let SSIBaseURL = process.env.SSI_BASE_URL || 'https://ssi.tbddev.org';
+
 let did: string;
 let vcApi: VcApi;
 let testAgent;
@@ -40,7 +43,7 @@ describe('web5.vc.ssi', () => {
         expect(result.status.detail).to.equal('Accepted');
         expect(result.record).to.exist;
 
-        let ssiResponse = await fetch('https://ssi.tbddev.org/v1/credentials/verification',
+        let ssiResponse = await fetch(SSIBaseURL + '/v1/credentials/verification',
           {
             method: 'PUT',
 
