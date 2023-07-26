@@ -12,7 +12,7 @@ let SSIBaseURL = process.env.SSI_BASE_URL || 'https://ssi.tbddev.org';
 
 let did: string;
 let vcApi: VcApi;
-let testAgent;
+let testAgent: TestAgent;
 let testProfileOptions: TestProfileOptions;
 
 describe('web5.vc.ssi', () => {
@@ -34,24 +34,23 @@ describe('web5.vc.ssi', () => {
     await testAgent.closeStorage();
   });
 
-  describe('verifiable credentials send to ssi', () => {
-    describe('create', () => {
-      it('SSI-verifiable VC', async () => {
+  describe('validated against ssi', () => {
+    describe('create and validate', () => {
+      it('a verifiable credential', async () => {
+
+        console.log('creating vc');
         const credentialSubject = {firstName: 'alice'};
         const result = await vcApi.create(credentialSubject);
         expect(result.status.code).to.equal(202);
         expect(result.status.detail).to.equal('Accepted');
         expect(result.record).to.exist;
 
-        let ssiResponse = await fetch(SSIBaseURL + '/v1/credentials/verification',
-          {
-            method: 'PUT',
+        console.log('created vc, verifiying it against SSI');
 
-            body: JSON.stringify({
-              'credentialJwt': await result.record?.data.text(),
-            }),
-          }
-        );
+        let ssiResponse = await loggableFetch(SSIBaseURL + '/v1/credentials/verification', {
+          method : 'PUT',
+          body   : JSON.stringify({'credentialJwt': await result.record?.data.text()}),
+        });
 
         let ssiVerified = await ssiResponse.json();
 
@@ -59,7 +58,12 @@ describe('web5.vc.ssi', () => {
 
         expect(ssiVerified.verified).to.be.true;
       });
-
     });
   });
 });
+
+function loggableFetch(url: string, init?: RequestInit | undefined): Promise<Response> {
+  let method = init?.method || 'GET';
+  console.log(method, ' ', url);
+  return fetch(url, init);
+}

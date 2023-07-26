@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - vc-ssi-integration-tests
   pull_request:
     branches:
       - main
