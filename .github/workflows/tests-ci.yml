@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - vc-test-build
   pull_request:
     branches:
       - main
