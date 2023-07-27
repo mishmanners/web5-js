@@ -58,7 +58,7 @@ jobs:
         uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d # v3.1.4
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      
+
       - name: start local SSI service
         run: git clone https://github.com/TBD54566975/ssi-service && cd ssi-service/build && docker-compose up --build -d && until curl -f http://localhost:8080/health; do sleep 1; done
 
@@ -66,6 +66,7 @@ jobs:
         run: cd packages/web5 && npm run test:node --ws -- -f ssi --color
         env:
           SSI_BASE_URL: http://localhost:8080
+          LOG_SSI_REQUESTS: 'true'
 
   test-with-browsers:
     # Run browser tests using macOS so that WebKit tests don't fail under a Linux environment
