@@ -11,7 +11,7 @@ import { webcrypto } from 'node:crypto';
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
 let did: string;
-let dwnNodes: string[] = ['https://dwn.tbddev.org/dwn0'];
+let dwnNodes: string[] = [process.env.DWN_URL || 'https://dwn.tbddev.org/dwn0'];
 // let dwnNodes: string[] = ['http://localhost:3000'];
 let testAgent: TestAgent;
 
