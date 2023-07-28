@@ -4,7 +4,7 @@ import * as testProfile from './fixtures/test-profiles.js';
 
 import { VcApi } from '../src/vc-api.js';
 import { TestAgent, TestProfileOptions } from './test-utils/test-user-agent.js';
-import { DidKeyApi } from '../../dids/src/did-key';
+import { DidKeyApi } from '../../dids/src/did-key.js';
 import * as jose from 'jose';
 
 // import jwt from 'jsonwebtoken';
@@ -55,7 +55,7 @@ describe('web5.vc.ssi', () => {
         expect(ssiResponse.verified).to.be.true;
       });
       it('a presentation exchange', async () => {
-        const issuerDID = await ssiRequest('/v1/dids/key', {keyType: 'Ed25519'});
+        const issuerDID = await ssiRequest('/v1/dids/key', { keyType: 'Ed25519' });
         const holderDID = await new DidKeyApi().create();
 
         let credentialResponse = await ssiRequest('/v1/credentials', {
@@ -71,6 +71,31 @@ describe('web5.vc.ssi', () => {
           expiry               : '2051-10-05T14:48:00.000Z'
         });
 
+        let presentationDefinition = await ssiRequest('/v1/presentations/definitions', {
+          name             : 'name',
+          purpose          : 'purpose',
+          inputDescriptors : [
+            {
+              id          : 'wa_driver_license',
+              name        : 'washington state business license',
+              purpose     : 'some testing stuff',
+              constraints : {
+                fields: [
+                  {
+                    id   : 'date_of_birth',
+                    path : [
+                      '$.credentialSubject.dateOfBirth',
+                      '$.credentialSubject.dob',
+                      '$.vc.credentialSubject.dateOfBirth',
+                      '$.vc.credentialSubject.dob'
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        });
+
         const submissionJWTData = {
           vp: {
             '@context': [
@@ -79,8 +104,8 @@ describe('web5.vc.ssi', () => {
             holder                  : holderDID.id, // go test calls holderDID.Expand() then this is .ID on the result of that. Have not investigated.
             type                    : ['VerifiablePresentation'],
             presentation_submission : {
-              id             : '{{.SubmissionID}}', // uuid.NewString()
-              definition_id  : '{{.DefinitionID}}', // PUT /v1/presentations/definitions -> DefinitionID = .presentation_definition.id
+              id             : 'D1C7DF4A-BE63-480E-9B0D-2354B11E06B0', // TODO: generate a new UUID here for every run
+              definition_id  : presentationDefinition.presentation_definition.id,
               descriptor_map : [
                 {
                   id     : 'wa_driver_license',
@@ -97,13 +122,13 @@ describe('web5.vc.ssi', () => {
 
         const jwk = await jose.importJWK(holderDID.keys[0].privateKeyJwk);
         const submissionJWT = await new jose.SignJWT(submissionJWTData)
-          .setProtectedHeader({alg: 'ED25519', kid: holderDID.id + issuerDID.did.verificationMethod[0].id, typ: 'JWT' })
+          .setProtectedHeader({ alg: 'ED25519', kid: holderDID.id + issuerDID.did.verificationMethod[0].id, typ: 'JWT' })
           .setIssuedAt(Math.floor(Date.now() / 1000))
           .setIssuer(holderDID.id)
           .setExpirationTime('2y')
           .sign(jwk);
 
-        let createSubmissionResponse = await ssiRequest('/v1/presentations/submissions', {submissionJwt: submissionJWT});
+        let createSubmissionResponse = await ssiRequest('/v1/presentations/submissions', { submissionJwt: submissionJWT });
 
         expect(createSubmissionResponse.done).to.be.true;
       });
@@ -115,23 +140,23 @@ async function ssiRequest(path: string, body?: any): Promise<any> {
   const method = body ? 'PUT' : 'GET'; // method is PUT if a request body is provided, GET if not
   const url = SSIBaseURL + path;
 
-  if(process.env.LOG_SSI_REQUESTS) {
+  if (process.env.LOG_SSI_REQUESTS) {
     console.log('>', method, url, body);
   }
 
-  const init: RequestInit = {method: method};
-  if(body) {
+  const init: RequestInit = { method: method };
+  if (body) {
     init.body = JSON.stringify(body);
   }
 
   const resp = await fetch(url, init);
   const respJSON = await resp.json();
 
-  if(process.env.LOG_SSI_REQUESTS) {
+  if (process.env.LOG_SSI_REQUESTS) {
     console.log('<', resp.status, resp.statusText, ': ', respJSON);
   }
 
-  if(resp.status > 299) {
+  if (resp.status > 299) {
     throw method + ' to ' + url + ' returned ' + resp.status + ' ' + resp.statusText;
   }
 
