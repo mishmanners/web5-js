@@ -4,8 +4,8 @@ import * as testProfile from './fixtures/test-profiles.js';
 
 import { VcApi } from '../src/vc-api.js';
 import { TestAgent, TestProfileOptions } from './test-utils/test-user-agent.js';
-import { DidKeyApi } from '@tbd54566975/dids';
-
+import { DidKeyApi } from '../../dids/src/did-key';
+import * as jose from 'jose';
 
 // import jwt from 'jsonwebtoken';
 
@@ -40,7 +40,6 @@ describe('web5.vc.ssi', () => {
     describe('create and validate', () => {
       it('a verifiable credential', async () => {
 
-        console.log('creating vc');
         const credentialSubject = { firstName: 'alice' };
         const result = await vcApi.create(credentialSubject);
         expect(result.status.code).to.equal(202);
@@ -52,8 +51,6 @@ describe('web5.vc.ssi', () => {
         let ssiResponse = await ssiRequest('/v1/credentials/verification', {
           'credentialJwt': await result.record?.data.text(),
         });
-
-        console.log(ssiResponse);
 
         expect(ssiResponse.verified).to.be.true;
       });
@@ -96,7 +93,16 @@ describe('web5.vc.ssi', () => {
           }
         };
 
-        const submissionJWT = JSON.stringify(submissionJWTData); // TODO make + sign a JWT out of this data, don't just JSON-encode it
+        console.log(holderDID.keys[0].privateKeyJwk);
+
+        const jwk = await jose.importJWK(holderDID.keys[0].privateKeyJwk);
+        const submissionJWT = await new jose.SignJWT(submissionJWTData)
+          .setProtectedHeader({alg: 'ED25519', kid: holderDID.id + issuerDID.did.verificationMethod[0].id, typ: 'JWT' })
+          .setIssuedAt(Math.floor(Date.now() / 1000))
+          .setIssuer(holderDID.id)
+          .setExpirationTime('2y')
+          .sign(jwk);
+
         let createSubmissionResponse = await ssiRequest('/v1/presentations/submissions', {submissionJwt: submissionJWT});
 
         expect(createSubmissionResponse.done).to.be.true;
@@ -123,6 +129,10 @@ async function ssiRequest(path: string, body?: any): Promise<any> {
 
   if(process.env.LOG_SSI_REQUESTS) {
     console.log('<', resp.status, resp.statusText, ': ', respJSON);
+  }
+
+  if(resp.status > 299) {
+    throw method + ' to ' + url + ' returned ' + resp.status + ' ' + resp.statusText;
   }
 
   return respJSON;
