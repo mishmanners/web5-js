@@ -118,9 +118,39 @@ describe('web5.vc.ssi', () => {
           }
         };
 
-        console.log(holderDID.keys[0].privateKeyJwk);
+        console.log(holderDID);
 
-        const jwk = await jose.importJWK(holderDID.keys[0].privateKeyJwk);
+        // this doesn't work, I don't know why
+        // sample privateKeyJwk value:
+        // {
+        //   kty: 'OKP',
+        //   crv: 'Ed25519',
+        //   kid: 'z6MkmucRVk9DWAuKvpoHn2CS67pKCoXe6C67SQmFridfWFUR',
+        //   x: 'bsHzXIp3Rw9T6gI8WqUC-Twkv182r8VnDBVfz_66PFY',
+        //   d: 'JyUViu5gqxnVfQSdKDYHIPY6WMpvL2Usz5UNsby0JIpuwfNcindHD1PqAjxapQL5PCS_XzavxWcMFV_P_ro8Vg'
+        // }
+        //
+        // docs for importJWK: https://github.com/panva/jose/blob/main/docs/functions/key_import.importJWK.md
+        // {
+        //   crv: 'P-256',
+        //   kty: 'EC',
+        //   x: 'ySK38C1jBdLwDsNWKzzBHqKYEE5Cgv-qjWvorUXk9fw',
+        //   y: '_LeQBw07cf5t57Iavn4j-BqJsAD1dpoz8gokd3sBsOo',
+        // }
+        let jwk: jose.KeyLike | Uint8Array | undefined;
+        for(const key of holderDID.keys) {
+          try {
+            console.log('attempting to import jwk:', key);
+            jwk = await jose.importJWK(key.privateKeyJwk);
+            break;
+          } catch(e) {
+            console.error('failed to import jwk:', e);
+          }
+        }
+        if(!jwk) {
+          throw 'failed to import any keys';
+        }
+
         const submissionJWT = await new jose.SignJWT(submissionJWTData)
           .setProtectedHeader({ alg: 'ED25519', kid: holderDID.id + issuerDID.did.verificationMethod[0].id, typ: 'JWT' })
           .setIssuedAt(Math.floor(Date.now() / 1000))
