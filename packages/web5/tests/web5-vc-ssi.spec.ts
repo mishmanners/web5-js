@@ -9,6 +9,12 @@ import * as jose from 'jose';
 
 // import jwt from 'jsonwebtoken';
 
+// NOTE: @noble/secp256k1 requires globalThis.crypto polyfill for node.js <=18: https://github.com/paulmillr/noble-secp256k1/blob/main/README.md#usage
+// Remove when we move off of node.js v18 to v20, earliest possible time would be Oct 2023: https://github.com/nodejs/release#release-schedule
+import { webcrypto } from 'node:crypto';
+// @ts-ignore
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
+
 // set environment variable SSI_BASE_URL=http://localhost:8080 for local testing
 let SSIBaseURL = process.env.SSI_BASE_URL || 'https://ssi.tbddev.org';
 
