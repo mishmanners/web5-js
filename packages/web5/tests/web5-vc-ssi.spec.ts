@@ -24,7 +24,6 @@ describe('web5.vc.ssi', () => {
 
   beforeEach(async () => {
     await testAgent.clearStorage();
-
     testProfileOptions = await testProfile.ion.with.dwn.service.and.authorization.keys();
     ({ did } = await testAgent.createProfile(testProfileOptions));
 
@@ -40,8 +39,11 @@ describe('web5.vc.ssi', () => {
     describe('create and validate', () => {
       it('a verifiable credential', async () => {
 
-        const credentialSubject = { firstName: 'alice' };
-        const result = await vcApi.create(credentialSubject);
+        const result = await vcApi.create({
+          credentialSubject : { firstName: 'alice' },
+          kid               : testAgent.signKeyPair.privateKey.id,
+        });
+        console.log('vc api create: ', result);
         expect(result.status.code).to.equal(202);
         expect(result.status.detail).to.equal('Accepted');
         expect(result.record).to.exist;
