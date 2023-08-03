@@ -47,7 +47,7 @@ describe('web5.vc.ssi', () => {
 
         const result = await vcApi.create({
           credentialSubject : { firstName: 'alice' },
-          kid               : testAgent.signKeyPair.privateKey.id,
+          kid               : testAgent.kid,
         });
         console.log('vc api create: ', result);
         expect(result.status.code).to.equal(202);

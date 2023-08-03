@@ -2,8 +2,8 @@ import type { DidIonCreateOptions } from '@tbd54566975/dids';
 
 import { DidIonApi, DidKeyApi, DidResolver } from '@tbd54566975/dids';
 import { Web5UserAgent, ProfileApi, ProfileStore } from '@tbd54566975/web5-user-agent';
-import { Dwn, DataStoreLevel, EventLogLevel, MessageStoreLevel } from '@tbd54566975/dwn-sdk-js';
-import { KeyManager, KeyManagerOptions, KeyManagerStore, ManagedKeyPair, ManagedKey, KmsKeyStore, KmsPrivateKeyStore, ManagedPrivateKey, LocalKms} from '@tbd54566975/crypto';
+import { Dwn, DataStoreLevel, EventLogLevel, MessageStoreLevel, Encoder } from '@tbd54566975/dwn-sdk-js';
+import { KeyManager, KeyManagerOptions, KeyManagerStore, ManagedKeyPair, ManagedKey, KmsKeyStore, KmsPrivateKeyStore, ManagedPrivateKey, LocalKms, ImportableKeyPair} from '@tbd54566975/crypto';
 import { MemoryStore } from '@tbd54566975/common';
 
 import { AppStorage } from '../../src/app-storage.js';
@@ -25,6 +25,7 @@ export type TestAgentOptions = {
   didIon: DidIonApi;
   didKey: DidKeyApi;
   signKeyPair: ManagedKeyPair;
+  keyManager: KeyManager;
 }
 
 export type TestProfile = {
@@ -48,6 +49,8 @@ export class TestAgent {
   didIon: DidIonApi;
   didKey: DidKeyApi;
   signKeyPair: ManagedKeyPair;
+  keyManager: KeyManager;
+  kid?: string;
 
   constructor(options: TestAgentOptions) {
     this.agent = options.agent;
@@ -62,6 +65,7 @@ export class TestAgent {
     this.didIon = options.didIon;
     this.didKey = options.didKey;
     this.signKeyPair = options.signKeyPair;
+    this.keyManager = options.keyManager;
   }
 
   async clearStorage(): Promise<void> {
@@ -151,7 +155,8 @@ export class TestAgent {
       didResolver,
       didIon      : DidIon,
       didKey      : DidKey,
-      signKeyPair : keyPair
+      signKeyPair : keyPair,
+      keyManager  : keyManager,
     });
   }
 
@@ -160,6 +165,7 @@ export class TestAgent {
     const DidKey = new DidKeyApi();
 
     const appDidState = await DidKey.create();
+    console.log('creating did ion with options: ', options.profileDidOptions);
     const profileDidState = await DidIon.create(options.profileDidOptions);
 
     const profile = await this.profileApi.createProfile({
@@ -169,8 +175,36 @@ export class TestAgent {
     });
 
     // TODO: Import did auth key into key manager (but will have to convert format from jwk to key material)
+    const key = profileDidState.keys[0];
 
-    return { did: profile.did.id };
+    console.log('did ion key: ', key);
+    console.log('did verification methods: ', profileDidState.didDocument?.verificationMethod);
+
+    const importableKey: ImportableKeyPair = {
+      privateKey: {
+        algorithm   : { name: 'ECDSA', namedCurve: 'secp256k1' },
+        extractable : true,
+        kms         : 'local',
+        material    : Encoder.base64UrlToBytes(key.privateKeyJwk.d),
+        type        : 'private',
+        usages      : ['sign'],
+      },
+      publicKey: {
+        algorithm   : { name: 'ECDSA', namedCurve: 'secp256k1' },
+        extractable : true,
+        kms         : 'local',
+        material    : Encoder.base64UrlToBytes(key.privateKeyJwk.x),
+        type        : 'public',
+        usages      : ['verify'],
+      }
+    };
+    const keypair = await this.keyManager.importKey(importableKey);
+
+    this.kid = keypair.privateKey.id;
+
+    return {
+      did: profile.did.id,
+    };
   }
 
   async openStorage() {

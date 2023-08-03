@@ -9,7 +9,7 @@ import jwt from 'jsonwebtoken';
 
 let did: string;
 let vcApi: VcApi;
-let testAgent;
+let testAgent: TestAgent;
 let testProfileOptions: TestProfileOptions;
 
 describe('web5.vc', () => {
@@ -36,8 +36,10 @@ describe('web5.vc', () => {
       it('valid vc', async () => {
         const credentialSubject = {firstName: 'alice'};
 
-        const vcCreateRequest: VcCreateRequest = { credentialSubject: credentialSubject, kid: testAgent.signKeyPair.privateKey.id};
+        const vcCreateRequest: VcCreateRequest = { credentialSubject: credentialSubject, kid: testAgent.kid};
         const result = await vcApi.create(vcCreateRequest);
+
+        console.log(result);
 
         const resultRecord = await result.record?.data.text();
         const decodedVc = jwt.decode(resultRecord, { complete: true });
