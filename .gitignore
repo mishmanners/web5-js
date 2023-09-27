@@ -154,3 +154,5 @@ dist
 .svelte-kit
 
 .DS_STORE
+
+.web5-component/main.js
