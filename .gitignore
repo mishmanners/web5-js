@@ -155,4 +155,4 @@ dist
 
 .DS_STORE
 
-.web5-component/main.js
+.web5-component/*.js

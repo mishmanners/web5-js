@@ -1,5 +1,5 @@
 import express from 'express';
-import { issueCredential } from './credentials';
+import { issueCredential } from './credentials.js';
 import type * as http from 'http';
 import type { Request, Response } from 'express'
 const app: express.Application = express();
