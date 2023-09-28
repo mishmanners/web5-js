@@ -22,4 +22,10 @@ app.get("/shutdown", (req: Request, res: Response) => {
     });
 });
 
-server = app.listen(8080);
+server = app.listen(8080, () => console.log("test server started"));
+process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server')
+    server.close(() => {
+      console.log('HTTP server closed')
+    })
+  })

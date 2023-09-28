@@ -5,4 +5,4 @@ WORKDIR /web5-js
 RUN npm ci
 RUN npm run build
 RUN tsc -p .web5-component/tsconfig.json
-CMD ["node", ".web5-component/main.js"]
+CMD ["node", ".web5-component/dist/main.js"]
