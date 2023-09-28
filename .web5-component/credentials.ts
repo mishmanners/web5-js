@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import type { ICredential } from '@sphereon/ssi-types'
-import { VcJwt, VerifiableCredential, SignOptions } from '../packages/credentials/src/index.js';
-import { DidKeyMethod, PortableDid } from '../packages/dids/src/index.js';
-import { Ed25519, Jose } from '../packages/crypto/src/index.js';
+import { VcJwt, VerifiableCredential, SignOptions } from '@web5/credentials';
+import { DidKeyMethod, PortableDid } from '@web5/dids';
+import { Ed25519, Jose } from '@web5/crypto';
 
 type Signer = (data: Uint8Array) => Promise<Uint8Array>;
 
