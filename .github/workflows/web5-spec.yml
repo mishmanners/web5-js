@@ -5,4 +5,4 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-      - uses: TBD54566975/web5-components-tests@main
+      - uses: TBD54566975/web5-spec@first-test
