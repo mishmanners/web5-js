@@ -2,13 +2,22 @@ import express from 'express';
 import { issueCredential } from './credentials.js';
 import type * as http from 'http';
 import type { Request, Response } from 'express'
+import { paths } from './openapi.js' // generated with npx openapi-typescript .web5-component/openapi.yaml -o .web5-component/openapi.d.ts
+import bodyparser from 'body-parser';
+
 const app: express.Application = express();
 app.use(express.json());
+app.use(bodyparser.json());
 
 app.post("/credentials/issue", issueCredential);
 
-app.get("/ready", (req, res) => {
-    res.send("ok");
+const serverID: paths["/"]["get"]["responses"]["200"]["content"]["application/json"] = {
+    name: "web5-js",
+    language: "JavaScript",
+    url: "https://github.com/TBD54566975/web5-js",
+}
+app.get("/", (req, res) => {
+    res.json(serverID);
 });
 
 let server: http.Server;

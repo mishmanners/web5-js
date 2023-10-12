@@ -1,30 +1,10 @@
 import { Request, Response } from 'express';
-import type { ICredential } from '@sphereon/ssi-types'
 import { VcJwt, VerifiableCredential, SignOptions } from '@web5/credentials';
 import { DidKeyMethod, PortableDid } from '@web5/dids';
 import { Ed25519, Jose } from '@web5/crypto';
+import { paths } from './openapi.js';
 
 type Signer = (data: Uint8Array) => Promise<Uint8Array>;
-
-class IssueCredentialBody {
-    credential: ICredential
-    options: IssueOptions
-}
-
-class IssueOptions {
-    created: string
-    challenge: string
-    domain: string
-    credentialStatus: CredentialStatus
-}
-
-class CredentialStatus {
-    type: string
-}
-
-class IssueCredentialResponse {
-    verifiableCredential: ICredential
-}
 
 let _ownDid: PortableDid;
 
@@ -37,7 +17,7 @@ async function getOwnDid(): Promise<PortableDid> {
 }
 
 export async function issueCredential(req: Request, res: Response) {
-    const body: IssueCredentialBody = req.body;
+    const body: paths["/credentials/issue"]["post"]["requestBody"]["content"]["application/json"] = req.body;
 
     const ownDid = await getOwnDid()
 
@@ -54,7 +34,11 @@ export async function issueCredential(req: Request, res: Response) {
     };
 
     const vcJwt: VcJwt = await VerifiableCredential.create(signOptions);
-    res.json({jwt: vcJwt})
+    // const resp: paths["/credentials/issue"]["post"]["responses"]["200"]["content"]["application/json"] = {
+    //     verifiableCredential: {
+    //     },
+    // }
+    res.json(vcJwt);
 }
 
 function EdDsaSigner(privateKey: Uint8Array): Signer {
